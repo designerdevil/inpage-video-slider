@@ -1,0 +1,19 @@
+body {
+    margin: 0px;
+    padding: 0px;
+    background: rgb(17, 87, 91);
+}
+
+.component-parent {
+    width: 900px;
+    margin: 0 auto;
+}
+
+.slick-slide {
+    height: 400px;
+}
+
+.slick-slide > * {
+    width: calc(100% - 20px);
+    margin: 10px;
+}
