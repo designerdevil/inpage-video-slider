@@ -1,5 +1,5 @@
 var yourNameSpace = window.yourNameSpace || {};
-yourNameSpace.rm5player = yourNameSpace.rm5player || (function ($, window, document) {
+yourNameSpace.rm5player = yourNameSpace.rm5player || (function ($, window) {
     const self = {};
     let apiCallTriggered = false;
     self.apiArray = [];
@@ -10,33 +10,37 @@ yourNameSpace.rm5player = yourNameSpace.rm5player || (function ($, window, docum
     };
     self.playerCarousel = $('.video-carousel');
     self.players = [];
-    self.getRandomId = () => Math.floor(100000 + Math.random() * 900000);
+    self.getNewRandomId = () => Math.floor(100 + Math.random() * 100) + '' + Math.floor(100 + Math.random() * 100);
+
+    /** Capturing player information and triggering Initialization  */
     self.initPlayer = function (currentCarousel) {
+        // Looping through on non init slider items
         $(currentCarousel).find('li:not(.initDone)').each(function (index) {
             const currentItem = $(this);
             const videoType = currentItem.data("videotype");
             const videoId = currentItem.data("videoid");
 
-            const id = `${videoId}${self.getRandomId()}${index}`;
+            const id = `${videoId}${self.getNewRandomId()}${index}`;
             let player;
             switch (videoType) {
                 case VIDEOTYPE.YOUTUBE:
-                    player = self.initYT(videoId, currentItem, videoType, id);
+                    player = self.initYT(videoId, currentItem, id);
                     break;
                 case VIDEOTYPE.BRIGHTCOVE:
-                    player = self.initBC(currentItem, videoType, id);
+                    player = self.initBC(currentItem, id);
                     break;
                 case VIDEOTYPE.VIMEO:
-                    player = self.initVIM(currentItem, videoType, id);
+                    player = self.initVIM(currentItem, id);
                     break;
             }
-            // Flagging when initialized
+            // Flagging slider items after its initialized
             currentItem.addClass('initDone');
             self.players.push({ id, videoType, player });
         });
     }
 
-    self.initYT = function (videoId, currentItem, videoType, playerId) {
+    /** Initializing YOUTUBE player */
+    self.initYT = function (videoId, currentItem, playerId) {
         const playerElement = $(currentItem).find('.videoPlayer')[0];
         return new YT.Player(playerElement, {
             videoId,
@@ -50,7 +54,8 @@ yourNameSpace.rm5player = yourNameSpace.rm5player || (function ($, window, docum
         });
     }
 
-    self.initBC = function (currentItem, videoType, playerId) {
+    /** Initializing Brightcove player */
+    self.initBC = function (currentItem, playerId) {
         const playerElement = $(currentItem).find('video-js')[0];
         const options = {};
         const player = videojs(playerElement, options, function onPlayerReady() {
@@ -61,7 +66,8 @@ yourNameSpace.rm5player = yourNameSpace.rm5player || (function ($, window, docum
         return player;
     }
 
-    self.initVIM = function (currentItem, videoType, playerId) {
+    /** Initializing Vimeo player */
+    self.initVIM = function (currentItem, playerId) {
         const playerElement = $(currentItem).find('iframe')[0];
         if (typeof window.Vimeo !== 'undefined') {
             const player = new Vimeo.Player(playerElement);
@@ -72,6 +78,7 @@ yourNameSpace.rm5player = yourNameSpace.rm5player || (function ($, window, docum
         }
     }
 
+    /** Pausing all available players */
     self.pauseVideos = function (playerId) {
         $.each(self.players, function (_, item) {
             if (item.id !== playerId) {
@@ -90,43 +97,42 @@ yourNameSpace.rm5player = yourNameSpace.rm5player || (function ($, window, docum
         })
     }
 
-    self.triggerPlayers = function() {
-        self.playerCarousel.each(function (_, slider) {
-            self.initPlayer(slider);
-        });
-    }
-
-    self.checkAvailability = function (status, type, slider) {
+    /** Check API availability and trigger player initialization */
+    self.checkAllApiAvailability = function (status, type) {
         if(status) self.apiArray.push(type);
         if(self.apiArray.length === Object.entries(VIDEOTYPE).length) {
-            self.triggerPlayers();
+            self.playerCarousel.each(function (_, slider) {
+                self.initPlayer(slider);
+            });
         }
     }
 
+    /** Trigger Plugin initialization  */
     self.init = function () {
+        // Fetch API once caraousel init is done
         self.playerCarousel.on('init', function (event, current) {
             if(!apiCallTriggered) {
                 $.getScript('https://www.youtube.com/iframe_api', function (_, textStatus) {
-                    self.checkAvailability(textStatus, VIDEOTYPE.YOUTUBE);
+                    self.checkAllApiAvailability(textStatus, VIDEOTYPE.YOUTUBE);
                 });
                 $.getScript('https://players.brightcove.net/1752604059001/default_default/index.min.js', function (_, textStatus) {
-                    self.checkAvailability(textStatus, VIDEOTYPE.BRIGHTCOVE)
+                    self.checkAllApiAvailability(textStatus, VIDEOTYPE.BRIGHTCOVE)
                 });
                 $.getScript('https://player.vimeo.com/api/player.js', function (_, textStatus) {
-                    self.checkAvailability(textStatus, VIDEOTYPE.VIMEO)
+                    self.checkAllApiAvailability(textStatus, VIDEOTYPE.VIMEO)
                 });
                 apiCallTriggered = true;
             }
         });
-        self.playerCarousel.slick({ infinite: true, slidesToShow: 3, slidesToScroll: 3 });
+        // Carousel init based on options passed
+        const options = { infinite: true, slidesToShow: 3, slidesToScroll: 3 };
+        self.playerCarousel.slick(options);
     }
 
     return self;
-})(jQuery, window, document);
+})(jQuery, window);
 
-/**
- * Initiating carousel and loading YT script
- */
+/** Initiating carousel on DOM ready */
 $(document).ready(function () {
     yourNameSpace.rm5player.init();
 });
